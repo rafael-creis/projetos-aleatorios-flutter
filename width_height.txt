@@ -1,0 +1,9 @@
+width: MediaQuery.of(context).size.width;
+
+height (total): MediaQuery.of(context).size.height;
+
+height - AppBar height: MediaQuery.of(context).size.height - kToolbarHeight;
+
+height - StatusBar height: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top;
+
+height - AppBar height - StatusBar height: MediaQuery.of(context).size.height - kToolbarHeight - MediaQuery.of(context).padding.top;
