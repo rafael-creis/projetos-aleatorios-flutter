@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mais_um_projetin/cadastro_nomes.dart';
 import 'package:mais_um_projetin/cool_columns.dart';
 import 'package:mais_um_projetin/scrollable_view.dart';
+import 'package:mais_um_projetin/usando_stack.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key}) : super(key: key);
@@ -55,6 +56,13 @@ class _MyHomePageState extends State<MyHomePage> {
                       builder: (context) => const CadastroNomes(),
                     )),
                 child: const Text('Cadastro de Nomes')),
+            ElevatedButton(
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const UsandoStack(),
+                    )),
+                child: const Text('Vendo o Uso de Stack')),
           ],
         ),
       ),
