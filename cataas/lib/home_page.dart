@@ -1,59 +1,18 @@
+import 'package:cataas/form_field.dart';
+import 'package:cataas/layers/domain/usecases/get_cat_amount.dart';
+import 'package:cataas/layers/domain/usecases/get_formatted_date.dart';
+import 'package:cataas/layers/domain/usecases/get_original_image_url.dart';
+import 'package:cataas/layers/domain/usecases/get_random_cat.dart';
+import 'package:cataas/layers/domain/usecases/get_tags.dart';
+import 'package:cataas/layers/domain/usecases/open_browser.dart';
+import 'auxiliar/color_palette.dart';
 import 'package:cataas/auxiliar/drawer_tiles.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttericon/font_awesome_icons.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert' as convert;
+import 'package:share_plus/share_plus.dart';
 import 'dart:async';
-
-Future<void> _openInBrowser(Uri url) async {
-  if (!await launchUrl(
-    url,
-    mode: LaunchMode.externalApplication,
-  )) {
-    throw 'Could not launch $url';
-  }
-}
-
-Future<List<dynamic>> _getTags() async {
-  final url = Uri.parse("https://cataas.com/api/tags");
-  var response = await http.get(url);
-  if (response.statusCode == 200) {
-    return convert.jsonDecode(response.body) as List<dynamic>;
-  } else {
-    throw ("_getTags request failed. Status code: ${response.statusCode}");
-  }
-}
-
-Future<Map<String, dynamic>> _getRandomCat(String query) async {
-  late Map<String, dynamic> jsonResponse;
-  late int statusCode;
-  await _getRandomCatJSON(query).then((value) => {
-        jsonResponse = _convertJSON(value),
-        statusCode = _getRandomCatStatusCode(value)
-      });
-  return {"statusCode": statusCode, "body": jsonResponse};
-}
-
-Future<http.Response> _getRandomCatJSON(String query) async {
-  final url = Uri.parse("https://cataas.com/cat$query?json=true");
-  var response = await http.get(url);
-  if (response.statusCode == 200) {
-    return response;
-  } else {
-    throw ("_getRandomCat request failed. Status code: ${response.statusCode}");
-  }
-}
-
-Map<String, dynamic> _convertJSON(http.Response response) {
-  return convert.jsonDecode(response.body);
-}
-
-int _getRandomCatStatusCode(http.Response response) {
-  return response.statusCode;
-}
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -63,15 +22,20 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final GetTags getTags = GetTags();
+  final GetRandomCat getRandomCat = GetRandomCat();
+  final GetCatAmount getCatAmount = GetCatAmount();
   String exampleQuery = "/says/Hello World";
   late Future<Map<String, dynamic>> catMap;
   late Future<List<dynamic>> catTags;
+  late Future<int> catAmount;
   String catUrl = "https://cataas.com";
 
   @override
   void initState() {
-    catMap = _getRandomCat(exampleQuery);
-    catTags = _getTags();
+    catMap = getRandomCat.execute(exampleQuery);
+    catTags = getTags.execute();
+    catAmount = getCatAmount.execute();
     super.initState();
   }
 
@@ -85,12 +49,12 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
               onPressed: () {
-                _openInBrowser(Uri.parse('https://twitter.com/apicataas'));
+                OpenBrowser.execute(Uri.parse('https://twitter.com/apicataas'));
               },
               icon: const Icon(FontAwesome.twitter)),
           IconButton(
               onPressed: () {
-                _openInBrowser(Uri(
+                OpenBrowser.execute(Uri(
                     scheme: 'https',
                     host: 'www.buymeacoffee.com',
                     path: 'kevinbalicot'));
@@ -110,31 +74,46 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
+                  children: [
+                    const Text(
                       'CATAAS',
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 25,
                           letterSpacing: 1.5),
                     ),
-                    Text(
+                    const Text(
                       'Cat as a service',
                       style: TextStyle(color: Colors.white, fontSize: 20),
                     ),
-                    Text(
+                    const Text(
                       'A REST API to spread peace and love (or not) thanks to cats.',
                       style: TextStyle(color: Colors.white, fontSize: 15),
                     ),
-                    Text(
-                      'More than 1000 cats for now',
-                      style: TextStyle(color: Colors.white, fontSize: 15),
+                    FutureBuilder(
+                      future: catAmount,
+                      builder: (context, snapshot) {
+                        Text options;
+                        if (snapshot.hasData) {
+                          options = Text(
+                            'Have ${snapshot.data} cats for now',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 15),
+                          );
+                        } else {
+                          options = const Text(
+                            'Have 0 cats for now',
+                            style: TextStyle(color: Colors.white, fontSize: 15),
+                          );
+                        }
+                        return options;
+                      },
                     )
                   ],
                 )),
             GestureDetector(
                 onTap: () {
-                  _openInBrowser(Uri.parse("https://cataas.com/#/upload"));
+                  OpenBrowser.execute(Uri.parse("https://cataas.com/#/upload"));
                 },
                 child: const DrawerTiles(
                   title: "Post a Cat",
@@ -158,7 +137,7 @@ class _HomePageState extends State<HomePage> {
                 )),
             GestureDetector(
                 onTap: () {
-                  _openInBrowser(Uri.parse(
+                  OpenBrowser.execute(Uri.parse(
                       'https://firewall.oauthorize.tk/privacy-policy?client_id=cataas'));
                 },
                 child: const DrawerTiles(
@@ -175,19 +154,19 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Container(),
+              const CustomFormField(),
               Container(
                 width: MediaQuery.of(context).size.width / 2,
                 height: 48,
                 margin: const EdgeInsets.symmetric(vertical: 50),
                 child: Material(
-                  color: Theme.of(context).primaryColor,
-                  borderRadius: const BorderRadius.all(Radius.circular(40)),
+                  color: ColorPalette.sucessColor,
+                  borderRadius: const BorderRadius.all(Radius.circular(10)),
                   child: InkWell(
-                    borderRadius: const BorderRadius.all(Radius.circular(40)),
+                    borderRadius: const BorderRadius.all(Radius.circular(10)),
                     onTap: () {
                       setState(() {
-                        catMap = _getRandomCat(exampleQuery);
+                        catMap = getRandomCat.execute(exampleQuery);
                       });
                     },
                     child: const Center(
@@ -200,7 +179,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 180),
+                constraints: const BoxConstraints(minHeight: 175),
                 child: Container(
                   width: MediaQuery.of(context).size.width * .8,
                   margin: const EdgeInsets.only(bottom: 20),
@@ -289,7 +268,8 @@ class _HomePageState extends State<HomePage> {
                                             .showSnackBar(const SnackBar(
                                           content: Text(
                                               'Image ID copied with sucess 😸'),
-                                          backgroundColor: Colors.amber,
+                                          backgroundColor:
+                                              ColorPalette.sucessColor,
                                         ));
                                       },
                                       child: const Text('Copiar ID'))
@@ -298,7 +278,7 @@ class _HomePageState extends State<HomePage> {
                               //TODO Bota o texto real aqui dentro
                               const Text('Image Text: Hello World'),
                               Text(
-                                  'Date of posting: ${_getFormattedDate(snapshot.data!["body"]["created_at"])}'),
+                                  'Date of posting: ${GetFormattedDate.execute(snapshot.data!["body"]["created_at"])}'),
                               RichText(
                                   text: TextSpan(
                                       style: const TextStyle(fontSize: 15),
@@ -313,7 +293,7 @@ class _HomePageState extends State<HomePage> {
                                             TextStyle(color: Colors.blue[800]),
                                         recognizer: TapGestureRecognizer()
                                           ..onTap = () {
-                                            _openInBrowser(Uri.parse(
+                                            OpenBrowser.execute(Uri.parse(
                                                 '$catUrl${snapshot.data!["body"]["url"]}'));
                                           }),
                                   ])),
@@ -325,17 +305,39 @@ class _HomePageState extends State<HomePage> {
                                         text: 'Original image link: ',
                                         style: TextStyle(color: Colors.black)),
                                     TextSpan(
-                                        text: _getOriginalImageURL(
+                                        text: GetOriginalImageUrl.execute(
                                             '$catUrl${snapshot.data!["body"]["url"]}'),
                                         style:
                                             TextStyle(color: Colors.blue[800]),
                                         recognizer: TapGestureRecognizer()
                                           ..onTap = () {
-                                            _openInBrowser(Uri.parse(
-                                                _getOriginalImageURL(
+                                            OpenBrowser.execute(Uri.parse(
+                                                GetOriginalImageUrl.execute(
                                                     '$catUrl${snapshot.data!["body"]["url"]}')));
                                           }),
-                                  ]))
+                                  ])),
+                              Align(
+                                alignment: Alignment.center,
+                                child: SizedBox(
+                                  width: MediaQuery.of(context).size.width * .4,
+                                  child: TextButton(
+                                      onPressed: () {
+                                        Share.share(
+                                          '$catUrl${snapshot.data!["body"]["url"]}',
+                                        );
+                                      },
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: const [
+                                          Icon(Icons.share),
+                                          Text(
+                                            'Share',
+                                          )
+                                        ],
+                                      )),
+                                ),
+                              )
                             ],
                           ),
                         );
@@ -353,12 +355,4 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-}
-
-String _getFormattedDate(String date) {
-  return date.substring(0, date.indexOf("T")).split('-').reversed.join('-');
-}
-
-_getOriginalImageURL(String url) {
-  return url.substring(0, 47);
 }
